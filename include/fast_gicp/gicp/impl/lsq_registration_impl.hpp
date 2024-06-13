@@ -30,6 +30,16 @@ void LsqRegistration<PointTarget, PointSource>::setRotationEpsilon(double eps) {
 }
 
 template <typename PointTarget, typename PointSource>
+void LsqRegistration<PointTarget, PointSource>::setTransformationEpsilon(double eps) {
+  transformation_epsilon_ = eps;
+}
+
+template <typename PointTarget, typename PointSource>
+void LsqRegistration<PointTarget, PointSource>::setMaxIterations(int max_iterations) {
+  max_iterations_ = max_iterations;
+}
+
+template <typename PointTarget, typename PointSource>
 void LsqRegistration<PointTarget, PointSource>::setInitialLambdaFactor(double init_lambda_factor) {
   lm_init_lambda_factor_ = init_lambda_factor;
 }

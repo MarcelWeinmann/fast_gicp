@@ -33,6 +33,61 @@ fast_gicp::NeighborSearchMethod search_method(const std::string& neighbor_search
   return fast_gicp::NeighborSearchMethod::DIRECT1;
 }
 
+fast_gicp::RegularizationMethod regularization_method(const std::string& regularization) {
+  if(regularization == "NONE") {
+    return fast_gicp::RegularizationMethod::NONE;
+  } else if (regularization == "MIN_EIG") {
+    return fast_gicp::RegularizationMethod::MIN_EIG;
+  } else if (regularization == "NORMALIZED_MIN_EIG") {
+    return fast_gicp::RegularizationMethod::NORMALIZED_MIN_EIG;
+  } else if (regularization == "PLANE") {
+    return fast_gicp::RegularizationMethod::PLANE;
+  } else if (regularization == "FROBENIUS") {
+    return fast_gicp::RegularizationMethod::FROBENIUS;
+  }
+
+  std::cerr << "error: unknown regularization method " << regularization << std::endl;
+  return fast_gicp::RegularizationMethod::PLANE;
+}
+
+fast_gicp::VoxelAccumulationMode voxel_accumulation_mode(const std::string& voxel_accumulation) {
+  if(voxel_accumulation == "ADDITIVE") {
+    return fast_gicp::VoxelAccumulationMode::ADDITIVE;
+  } else if (voxel_accumulation == "ADDITIVE_WEIGHTED") {
+    return fast_gicp::VoxelAccumulationMode::ADDITIVE_WEIGHTED;
+  } else if (voxel_accumulation == "MULTIPLICATIVE") {
+    return fast_gicp::VoxelAccumulationMode::MULTIPLICATIVE;
+  }
+
+  std::cerr << "error: unknown voxel accumulation method " << voxel_accumulation << std::endl;
+  return fast_gicp::VoxelAccumulationMode::ADDITIVE;
+}
+
+fast_gicp::NearestNeighborMethod nearest_neighbor_method(const std::string& method) {
+  if(method == "CPU_PARALLEL_KDTREE") {
+    return fast_gicp::NearestNeighborMethod::CPU_PARALLEL_KDTREE;
+  } else if (method == "GPU_BRUTEFORCE") {
+    return fast_gicp::NearestNeighborMethod::GPU_BRUTEFORCE;
+  } else if (method == "GPU_RBF_KERNEL") {
+    return fast_gicp::NearestNeighborMethod::GPU_RBF_KERNEL;
+  }
+
+  std::cerr << "error: unknown nearest neighbor method " << method << std::endl;
+  return fast_gicp::NearestNeighborMethod::CPU_PARALLEL_KDTREE;
+}
+
+fast_gicp::NDTDistanceMode ndt_distance_mode(const std::string& distance_mode) {
+  if(distance_mode == "P2D") {
+    return fast_gicp::NDTDistanceMode::P2D;
+  } else if (distance_mode == "D2D") {
+    return fast_gicp::NDTDistanceMode::D2D;
+  }
+
+  std::cerr << "error: unknown regularization method " << distance_mode << std::endl;
+  return fast_gicp::NDTDistanceMode::P2D;
+}
+
+
 pcl::PointCloud<pcl::PointXYZ>::Ptr eigen2pcl(const Eigen::Matrix<double, -1, 3>& points) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
   cloud->resize(points.rows());
@@ -169,6 +224,9 @@ PYBIND11_MODULE(pygicp, m) {
   py::class_<LsqRegistration, std::shared_ptr<LsqRegistration>>(m, "LsqRegistration")
     .def("set_input_target", [] (LsqRegistration& reg, const Eigen::Matrix<double, -1, 3>& points) { reg.setInputTarget(eigen2pcl(points)); })
     .def("set_input_source", [] (LsqRegistration& reg, const Eigen::Matrix<double, -1, 3>& points) { reg.setInputSource(eigen2pcl(points)); })
+    .def("set_rotation_epsilon", &LsqRegistration::setRotationEpsilon)
+    .def("set_transformation_epsilon", &LsqRegistration::setTransformationEpsilon)
+    .def("set_max_iterations", &LsqRegistration::setMaxIterations)
     .def("swap_source_and_target", &LsqRegistration::swapSourceAndTarget)
     .def("get_final_hessian", &LsqRegistration::getFinalHessian)
     .def("get_final_transformation", &LsqRegistration::getFinalTransformation)
@@ -187,22 +245,27 @@ PYBIND11_MODULE(pygicp, m) {
     .def("set_num_threads", &FastGICP::setNumThreads)
     .def("set_correspondence_randomness", &FastGICP::setCorrespondenceRandomness)
     .def("set_max_correspondence_distance", &FastGICP::setMaxCorrespondenceDistance)
+    .def("set_regularization_method", [](FastGICP& gicp, const std::string& method) { gicp.setRegularizationMethod(regularization_method(method)); })
   ;
 
   py::class_<FastVGICP, FastGICP, std::shared_ptr<FastVGICP>>(m, "FastVGICP")
     .def(py::init())
     .def("set_resolution", &FastVGICP::setResolution)
     .def("set_neighbor_search_method", [](FastVGICP& vgicp, const std::string& method) { vgicp.setNeighborSearchMethod(search_method(method)); })
+    .def("set_voxel_accumulation_mode", [](FastVGICP& vgicp, const std::string& method) { vgicp.setVoxelAccumulationMode(voxel_accumulation_mode(method)); })
   ;
 
 #ifdef USE_VGICP_CUDA
   py::class_<FastVGICPCuda, LsqRegistration, std::shared_ptr<FastVGICPCuda>>(m, "FastVGICPCuda")
     .def(py::init())
     .def("set_resolution", &FastVGICPCuda::setResolution)
+    .def("set_kernel_width", &FastVGICPCuda::setKernelWidth)
     .def("set_neighbor_search_method",
       [](FastVGICPCuda& vgicp, const std::string& method, double radius) { vgicp.setNeighborSearchMethod(search_method(method), radius); }
       , py::arg("method") = "DIRECT1", py::arg("radius") = 1.5
     )
+    .def("set_regularization_method", [](FastVGICPCuda& gicp, const std::string& method) { gicp.setRegularizationMethod(regularization_method(method)); })
+    .def("set_nearest_neighbor_search_method", [](FastVGICPCuda& gicp, const std::string& method) { gicp.setNearestNeighborSearchMethod(nearest_neighbor_method(method)); })
     .def("set_correspondence_randomness", &FastVGICPCuda::setCorrespondenceRandomness)
   ;
 
@@ -213,6 +276,7 @@ PYBIND11_MODULE(pygicp, m) {
       , py::arg("method") = "DIRECT1", py::arg("radius") = 1.5
     )
     .def("set_resolution", &NDTCuda::setResolution)
+    .def("set_distance_mode", [](NDTCuda& ndt, const std::string& method) { ndt.setDistanceMode(ndt_distance_mode(method)); })
   ;
 #endif
 

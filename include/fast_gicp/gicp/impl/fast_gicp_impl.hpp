@@ -47,6 +47,11 @@ void FastGICP<PointSource, PointTarget, SearchMethodSource, SearchMethodTarget>:
 }
 
 template <typename PointSource, typename PointTarget, typename SearchMethodSource, typename SearchMethodTarget>
+void FastGICP<PointSource, PointTarget, SearchMethodSource, SearchMethodTarget>::setMaxCorrespondenceDistance(double distance) {
+  corr_dist_threshold_ = distance;
+}
+
+template <typename PointSource, typename PointTarget, typename SearchMethodSource, typename SearchMethodTarget>
 void FastGICP<PointSource, PointTarget, SearchMethodSource, SearchMethodTarget>::swapSourceAndTarget() {
   input_.swap(target_);
   search_source_.swap(search_target_);

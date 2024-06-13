@@ -51,6 +51,7 @@ public:
   void setNumThreads(int n);
   void setCorrespondenceRandomness(int k);
   void setRegularizationMethod(RegularizationMethod method);
+  void setMaxCorrespondenceDistance(double distance);
 
   virtual void swapSourceAndTarget() override;
   virtual void clearSource() override;

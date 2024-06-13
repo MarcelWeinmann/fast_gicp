@@ -49,6 +49,8 @@ public:
   virtual ~LsqRegistration();
 
   void setRotationEpsilon(double eps);
+  void setTransformationEpsilon(double eps);
+  void setMaxIterations(int max_iterations);
   void setInitialLambdaFactor(double init_lambda_factor);
   void setDebugPrint(bool lm_debug_print);
 
