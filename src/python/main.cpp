@@ -68,12 +68,33 @@ fast_gicp::NearestNeighborMethod nearest_neighbor_method(const std::string& meth
     return fast_gicp::NearestNeighborMethod::CPU_PARALLEL_KDTREE;
   } else if (method == "GPU_BRUTEFORCE") {
     return fast_gicp::NearestNeighborMethod::GPU_BRUTEFORCE;
-  } else if (method == "GPU_RBF_KERNEL") {
-    return fast_gicp::NearestNeighborMethod::GPU_RBF_KERNEL;
+  } else if (method == "GPU_KERNEL") {
+    return fast_gicp::NearestNeighborMethod::GPU_KERNEL;
   }
 
   std::cerr << "error: unknown nearest neighbor method " << method << std::endl;
   return fast_gicp::NearestNeighborMethod::CPU_PARALLEL_KDTREE;
+}
+
+fast_gicp::KernelMethod kernel_method(const std::string& method) {
+  if(method == "None") {
+    return fast_gicp::KernelMethod::None;
+  } else if (method == "RBF") {
+    return fast_gicp::KernelMethod::RBF;
+  } else if (method == "L1") {
+    return fast_gicp::KernelMethod::L1;
+  } else if (method == "Cauchy") {
+    return fast_gicp::KernelMethod::Cauchy;
+  } else if (method == "Geman_McClure") {
+    return fast_gicp::KernelMethod::Geman_McClure;
+  } else if (method == "Welsch") {
+    return fast_gicp::KernelMethod::Welsch;
+  } else if (method == "Switchable_Constraint") {
+    return fast_gicp::KernelMethod::Switchable_Constraint;
+  }
+
+  std::cerr << "error: unknown kernel method " << method << std::endl;
+  return fast_gicp::KernelMethod::None;
 }
 
 fast_gicp::NDTDistanceMode ndt_distance_mode(const std::string& distance_mode) {
@@ -245,7 +266,9 @@ PYBIND11_MODULE(pygicp, m) {
     .def("set_num_threads", &FastGICP::setNumThreads)
     .def("set_correspondence_randomness", &FastGICP::setCorrespondenceRandomness)
     .def("set_max_correspondence_distance", &FastGICP::setMaxCorrespondenceDistance)
+    .def("set_kernel_widht", &FastGICP::setKernelWidth)
     .def("set_regularization_method", [](FastGICP& gicp, const std::string& method) { gicp.setRegularizationMethod(regularization_method(method)); })
+    .def("set_kernel_method", [](FastGICP& gicp, const std::string& method) { gicp.setKernelMethod(kernel_method(method)); })
   ;
 
   py::class_<FastVGICP, FastGICP, std::shared_ptr<FastVGICP>>(m, "FastVGICP")
@@ -266,6 +289,7 @@ PYBIND11_MODULE(pygicp, m) {
     )
     .def("set_regularization_method", [](FastVGICPCuda& gicp, const std::string& method) { gicp.setRegularizationMethod(regularization_method(method)); })
     .def("set_nearest_neighbor_search_method", [](FastVGICPCuda& gicp, const std::string& method) { gicp.setNearestNeighborSearchMethod(nearest_neighbor_method(method)); })
+    .def("set_kernel_method", [](FastVGICPCuda& gicp, const std::string& method) { gicp.setKernelMethod(kernel_method(method)); })
     .def("set_correspondence_randomness", &FastVGICPCuda::setCorrespondenceRandomness)
   ;
 

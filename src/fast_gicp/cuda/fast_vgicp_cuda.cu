@@ -202,19 +202,19 @@ void FastVGICPCudaCore::calculate_target_covariances(RegularizationMethod method
   covariance_regularization(*target_points, *target_covariances, method);
 }
 
-void FastVGICPCudaCore::calculate_source_covariances_rbf(RegularizationMethod method) {
+void FastVGICPCudaCore::calculate_source_covariances_kernel(RegularizationMethod method, KernelMethod kernel) {
   if(!source_covariances) {
     source_covariances.reset(new thrust::device_vector<Eigen::Matrix3f>(source_points->size()));
   }
-  covariance_estimation_rbf(*source_points, kernel_width, kernel_max_dist, *source_covariances);
+  covariance_estimation_kernelized(*source_points, kernel_width, kernel_max_dist, kernel, *source_covariances);
   covariance_regularization(*source_points, *source_covariances, method);
 }
 
-void FastVGICPCudaCore::calculate_target_covariances_rbf(RegularizationMethod method) {
+void FastVGICPCudaCore::calculate_target_covariances_kernel(RegularizationMethod method, KernelMethod kernel) {
   if(!target_covariances) {
     target_covariances.reset(new thrust::device_vector<Eigen::Matrix3f>(target_points->size()));
   }
-  covariance_estimation_rbf(*target_points, kernel_width, kernel_max_dist, *target_covariances);
+  covariance_estimation_kernelized(*target_points, kernel_width, kernel_max_dist, kernel, *target_covariances);
   covariance_regularization(*target_points, *target_covariances, method);
 }
 

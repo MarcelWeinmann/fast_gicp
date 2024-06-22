@@ -6,10 +6,11 @@
 
 namespace fast_gicp {
 
-inline double square(double x) { return x * x; }
-
 template <typename T>
-double calculate_kernel(double kernel_width, T error, KernelMethod method) {
+inline T square(T x) { return x * x; }
+
+template <typename R, typename T>
+R calculate_kernel(R kernel_width, T error, KernelMethod method) {
     switch(method) {
         case KernelMethod::RBF:
             return exp(- kernel_width * error.squaredNorm());
@@ -24,7 +25,7 @@ double calculate_kernel(double kernel_width, T error, KernelMethod method) {
             return exp(- (error / kernel_width).squaredNorm());
             break;
         case KernelMethod::Switchable_Constraint: {
-            double squared_error = error.squaredNorm();
+            R squared_error = error.squaredNorm();
             if (squared_error <= kernel_width) {
                 return 1.0;
             } else {

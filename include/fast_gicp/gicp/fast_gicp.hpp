@@ -10,6 +10,7 @@
 #include <pcl/registration/registration.h>
 #include <fast_gicp/gicp/lsq_registration.hpp>
 #include <fast_gicp/gicp/gicp_settings.hpp>
+#include <fast_gicp/gicp/impl/robust_kernels.hpp>
 
 namespace fast_gicp {
 
@@ -51,6 +52,8 @@ public:
   void setNumThreads(int n);
   void setCorrespondenceRandomness(int k);
   void setRegularizationMethod(RegularizationMethod method);
+  void setKernelMethod(KernelMethod method);
+  void setKernelWidth(double kernel_width);
   void setMaxCorrespondenceDistance(double distance);
 
   virtual void swapSourceAndTarget() override;
@@ -85,8 +88,10 @@ protected:
 protected:
   int num_threads_;
   int k_correspondences_;
+  double kernel_width_;
 
   RegularizationMethod regularization_method_;
+  KernelMethod kernel_method_;
 
   std::shared_ptr<SearchMethodSource> search_source_;
   std::shared_ptr<SearchMethodTarget> search_target_;

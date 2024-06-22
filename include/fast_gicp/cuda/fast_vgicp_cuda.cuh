@@ -53,8 +53,8 @@ public:
   void calculate_source_covariances(RegularizationMethod method);
   void calculate_target_covariances(RegularizationMethod method);
 
-  void calculate_source_covariances_rbf(RegularizationMethod method);
-  void calculate_target_covariances_rbf(RegularizationMethod method);
+  void calculate_source_covariances_kernel(RegularizationMethod method, KernelMethod kernel);
+  void calculate_target_covariances_kernel(RegularizationMethod method, KernelMethod kernel);
 
   void get_source_covariances(std::vector<Eigen::Matrix3f, Eigen::aligned_allocator<Eigen::Matrix3f>>& covs) const;
   void get_target_covariances(std::vector<Eigen::Matrix3f, Eigen::aligned_allocator<Eigen::Matrix3f>>& covs) const;

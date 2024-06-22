@@ -59,15 +59,17 @@ public:
 struct covariance_estimation_kernel {
   static const int BLOCK_SIZE = 512;
 
-  covariance_estimation_kernel(thrust::device_ptr<const float> exp_factor_ptr, thrust::device_ptr<const float> max_dist_ptr, thrust::device_ptr<const Eigen::Vector3f> points_ptr)
-  : exp_factor_ptr(exp_factor_ptr),
+  covariance_estimation_kernel(thrust::device_ptr<const float> kernel_width_ptr, thrust::device_ptr<const float> max_dist_ptr, thrust::device_ptr<const KernelMethod> kernel_ptr, thrust::device_ptr<const Eigen::Vector3f> points_ptr)
+  : kernel_width_ptr(kernel_width_ptr),
     max_dist_ptr(max_dist_ptr),
+    kernel_ptr(kernel_ptr),
     points_ptr(points_ptr) {}
 
   __host__ __device__ NormalDistribution operator()(const Eigen::Vector3f& x) const {
-    const float exp_factor = *thrust::raw_pointer_cast(exp_factor_ptr);
+    float kernel_width = *thrust::raw_pointer_cast(kernel_width_ptr);
     const float max_dist = *thrust::raw_pointer_cast(max_dist_ptr);
     const float max_dist_sq = max_dist * max_dist;
+    const KernelMethod kernel = *thrust::raw_pointer_cast(kernel_ptr);
     const Eigen::Vector3f* points = thrust::raw_pointer_cast(points_ptr);
 
     NormalDistribution dist = NormalDistribution::zero();
@@ -77,15 +79,45 @@ struct covariance_estimation_kernel {
         continue;
       }
 
-      float w = expf(-exp_factor * sq_d);
+      float w = calculate_kernel(kernel_width, x - points[i], kernel);
       dist.accumulate(w, points[i]);
     }
 
     return dist;
   }
 
-  thrust::device_ptr<const float> exp_factor_ptr;
+  __host__ __device__ inline float square(float x) const { return x * x; }
+
+  __host__ __device__ float calculate_kernel(float kernel_width, const Eigen::Vector3f& error, KernelMethod method) const {
+      switch(method) {
+          case KernelMethod::RBF:
+              return exp(- kernel_width * error.squaredNorm());
+              break;
+          case KernelMethod::L1:
+              return 1.0 / error.template lpNorm<1>();
+              break;
+          case KernelMethod::Geman_McClure:
+              return square(kernel_width) / square((kernel_width + error.squaredNorm()));
+              break;
+          case KernelMethod::Welsch:
+              return exp(- (error / kernel_width).squaredNorm());
+              break;
+          case KernelMethod::Switchable_Constraint: {
+              float squared_error = error.squaredNorm();
+              if (squared_error <= kernel_width) {
+                  return 1.0;
+              } else {
+                  return 4 * square(kernel_width) / square(kernel_width + squared_error);
+              }}
+              break;
+          default:
+              return 1.0;
+      }
+  }
+
+  thrust::device_ptr<const float> kernel_width_ptr;
   thrust::device_ptr<const float> max_dist_ptr;
+  thrust::device_ptr<const KernelMethod> kernel_ptr;
   thrust::device_ptr<const Eigen::Vector3f> points_ptr;
 };
 
@@ -113,14 +145,18 @@ struct finalization_kernel {
   thrust::device_ptr<const NormalDistribution> accumulated_dists_last;
 };
 
-void covariance_estimation_rbf(const thrust::device_vector<Eigen::Vector3f>& points, double kernel_width, double max_dist, thrust::device_vector<Eigen::Matrix3f>& covariances) {
+void covariance_estimation_kernelized(const thrust::device_vector<Eigen::Vector3f>& points, double kernel_width, double max_dist, KernelMethod kernel, thrust::device_vector<Eigen::Matrix3f>& covariances) {
   covariances.resize(points.size());
 
   thrust::device_vector<float> constants(2);
   constants[0] = kernel_width;
   constants[1] = max_dist;
-  thrust::device_ptr<const float> exp_factor_ptr = constants.data();
+  thrust::device_ptr<const float> kernel_width_ptr = constants.data();
   thrust::device_ptr<const float> max_dist_ptr = constants.data() + 1;
+
+  thrust::device_vector<KernelMethod> kernel_type(1);
+  kernel_type[0] = kernel;
+  thrust::device_ptr<const KernelMethod> kernel_ptr = kernel_type.data();
 
   int num_blocks = (points.size() + (covariance_estimation_kernel::BLOCK_SIZE - 1)) / covariance_estimation_kernel::BLOCK_SIZE;
   // padding
@@ -135,7 +171,7 @@ void covariance_estimation_rbf(const thrust::device_vector<Eigen::Vector3f>& poi
 
   // accumulate kerneled point distributions
   for (int i = 0; i < num_blocks; i++) {
-    covariance_estimation_kernel kernel(exp_factor_ptr, max_dist_ptr, ext_points.data() + covariance_estimation_kernel::BLOCK_SIZE * i);
+    covariance_estimation_kernel kernel(kernel_width_ptr, max_dist_ptr, kernel_ptr, ext_points.data() + covariance_estimation_kernel::BLOCK_SIZE * i);
     auto event = thrust::async::transform(points.begin(), points.end(), accumulated_dists.begin() + points.size() * i, kernel);
     events[i] = std::move(event);
     thrust::system::cuda::detail::create_dependency(stream, events[i]);

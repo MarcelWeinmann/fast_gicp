@@ -18,6 +18,8 @@ FastGICP<PointSource, PointTarget, SearchMethodSource, SearchMethodTarget>::Fast
   corr_dist_threshold_ = std::numeric_limits<float>::max();
 
   regularization_method_ = RegularizationMethod::PLANE;
+  kernel_method_ = KernelMethod::None;
+  kernel_width_ = 0.5;
   search_source_.reset(new SearchMethodSource);
   search_target_.reset(new SearchMethodTarget);
 }
@@ -44,6 +46,16 @@ void FastGICP<PointSource, PointTarget, SearchMethodSource, SearchMethodTarget>:
 template <typename PointSource, typename PointTarget, typename SearchMethodSource, typename SearchMethodTarget>
 void FastGICP<PointSource, PointTarget, SearchMethodSource, SearchMethodTarget>::setRegularizationMethod(RegularizationMethod method) {
   regularization_method_ = method;
+}
+
+template <typename PointSource, typename PointTarget, typename SearchMethodSource, typename SearchMethodTarget>
+void FastGICP<PointSource, PointTarget, SearchMethodSource, SearchMethodTarget>::setKernelMethod(KernelMethod method) {
+  kernel_method_ = method;
+}
+
+template <typename PointSource, typename PointTarget, typename SearchMethodSource, typename SearchMethodTarget>
+void FastGICP<PointSource, PointTarget, SearchMethodSource, SearchMethodTarget>::setKernelWidth(double kernel_width) {
+  kernel_width_ = kernel_width;
 }
 
 template <typename PointSource, typename PointTarget, typename SearchMethodSource, typename SearchMethodTarget>
@@ -154,7 +166,9 @@ void FastGICP<PointSource, PointTarget, SearchMethodSource, SearchMethodTarget>:
     Eigen::Matrix4d RCR = cov_B + trans.matrix() * cov_A * trans.matrix().transpose();
     RCR(3, 3) = 1.0;
 
-    mahalanobis_[i] = RCR.inverse();
+    double kernel = calculate_kernel(kernel_width_, Eigen::Matrix<float, 1, 1>(sq_distances_[i]).cwiseSqrt(),
+                                     kernel_method_);
+    mahalanobis_[i] = RCR.inverse() * kernel;
     mahalanobis_[i](3, 3) = 0.0f;
   }
 }

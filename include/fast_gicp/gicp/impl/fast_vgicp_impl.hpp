@@ -110,7 +110,13 @@ void FastVGICP<PointSource, PointTarget>::update_correspondences(const Eigen::Is
     Eigen::Matrix4d RCR = cov_B + trans.matrix() * cov_A * trans.matrix().transpose();
     RCR(3, 3) = 1.0;
 
-    voxel_mahalanobis_[i] = RCR.inverse();
+    const Eigen::Vector4d mean_A = input_->at(corr.first).getVector4fMap().template cast<double>();
+    const Eigen::Vector4d mean_B = corr.second->mean;
+    const Eigen::Vector4d transed_mean_A = trans * mean_A;
+    const Eigen::Vector4d error = mean_B - transed_mean_A;
+
+    double kernel = calculate_kernel(kernel_width_, error, kernel_method_);
+    voxel_mahalanobis_[i] = RCR.inverse() * kernel;
     voxel_mahalanobis_[i](3, 3) = 0.0;
   }
 }

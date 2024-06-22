@@ -23,6 +23,7 @@ FastVGICPCuda<PointSource, PointTarget>::FastVGICPCuda() : LsqRegistration<Point
   this->reg_name_ = "FastVGICPCuda";
   k_correspondences_ = 20;
   voxel_resolution_ = 1.0;
+  kernel_method_ = KernelMethod::None;
   regularization_method_ = RegularizationMethod::PLANE;
   neighbor_search_method_ = NearestNeighborMethod::CPU_PARALLEL_KDTREE;
 
@@ -48,6 +49,11 @@ void FastVGICPCuda<PointSource, PointTarget>::setKernelWidth(double kernel_width
     max_dist = kernel_width * 5.0;
   }
   vgicp_cuda_->set_kernel_params(kernel_width, max_dist);
+}
+
+template<typename PointSource, typename PointTarget>
+void FastVGICPCuda<PointSource, PointTarget>::setKernelMethod(KernelMethod method) {
+  kernel_method_ = method;
 }
 
 template<typename PointSource, typename PointTarget>
@@ -104,8 +110,8 @@ void FastVGICPCuda<PointSource, PointTarget>::setInputSource(const PointCloudSou
       vgicp_cuda_->find_source_neighbors(k_correspondences_);
       vgicp_cuda_->calculate_source_covariances(regularization_method_);
       break;
-    case NearestNeighborMethod::GPU_RBF_KERNEL:
-      vgicp_cuda_->calculate_source_covariances_rbf(regularization_method_);
+    case NearestNeighborMethod::GPU_KERNEL:
+      vgicp_cuda_->calculate_source_covariances_kernel(regularization_method_, kernel_method_);
       break;
   }
 }
@@ -133,8 +139,8 @@ void FastVGICPCuda<PointSource, PointTarget>::setInputTarget(const PointCloudTar
       vgicp_cuda_->find_target_neighbors(k_correspondences_);
       vgicp_cuda_->calculate_target_covariances(regularization_method_);
       break;
-    case NearestNeighborMethod::GPU_RBF_KERNEL:
-      vgicp_cuda_->calculate_target_covariances_rbf(regularization_method_);
+    case NearestNeighborMethod::GPU_KERNEL:
+      vgicp_cuda_->calculate_target_covariances_kernel(regularization_method_, kernel_method_);
       break;
   }
   vgicp_cuda_->create_target_voxelmap();

@@ -47,6 +47,8 @@ protected:
   using pcl::Registration<PointSource, PointTarget, Scalar>::target_;
 
   using FastGICP<PointSource, PointTarget>::num_threads_;
+  using FastGICP<PointSource, PointTarget>::kernel_width_;
+  using FastGICP<PointSource, PointTarget>::kernel_method_;
   using FastGICP<PointSource, PointTarget>::search_source_;
   using FastGICP<PointSource, PointTarget>::search_target_;
   using FastGICP<PointSource, PointTarget>::source_covs_;
