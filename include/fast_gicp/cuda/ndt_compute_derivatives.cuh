@@ -5,7 +5,10 @@
 #include <Eigen/Geometry>
 #include <thrust/device_vector.h>
 
+#include <fast_gicp/gicp/gicp_settings.hpp>
+
 #include <fast_gicp/cuda/gaussian_voxelmap.cuh>
+#include <fast_gicp/cuda/robust_kernels.cuh>
 
 namespace fast_gicp {
 namespace cuda {
@@ -16,6 +19,8 @@ double p2d_ndt_compute_derivatives(
   const thrust::device_vector<thrust::pair<int, int>>& correspondences,
   const thrust::device_ptr<const Eigen::Isometry3f>& linearized_x_ptr,
   const thrust::device_ptr<const Eigen::Isometry3f>& x_ptr,
+  const thrust::device_ptr<const fast_gicp::KernelMethod> kernel_method_ptr,
+  const thrust::device_ptr<const float> kernel_width_ptr,
   Eigen::Matrix<double, 6, 6>* H,
   Eigen::Matrix<double, 6, 1>* b);
 
@@ -25,6 +30,8 @@ double d2d_ndt_compute_derivatives(
   const thrust::device_vector<thrust::pair<int, int>>& correspondences,
   const thrust::device_ptr<const Eigen::Isometry3f>& linearized_x_ptr,
   const thrust::device_ptr<const Eigen::Isometry3f>& x_ptr,
+  const thrust::device_ptr<const fast_gicp::KernelMethod> kernel_method_ptr,
+  const thrust::device_ptr<const float> kernel_width_ptr,
   Eigen::Matrix<double, 6, 6>* H,
   Eigen::Matrix<double, 6, 1>* b);
 

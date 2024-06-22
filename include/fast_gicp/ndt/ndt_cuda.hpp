@@ -52,6 +52,9 @@ public:
 
   void setDistanceMode(NDTDistanceMode mode);
   void setResolution(double resolution);
+  void setRegularizationMethod(RegularizationMethod method);
+  void setKernelWidht(double kernel_width);
+  void setKernelMethod(KernelMethod method);
   void setNeighborSearchMethod(NeighborSearchMethod method, double radius = -1.0);
 
   virtual void swapSourceAndTarget() override;

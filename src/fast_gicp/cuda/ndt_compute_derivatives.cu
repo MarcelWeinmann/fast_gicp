@@ -6,17 +6,6 @@ namespace fast_gicp {
 namespace cuda {
 
 namespace {
-
-__host__ __device__ float huber(float k, float x) {
-  float abs_x = fabsf(x);
-  return abs_x <= k ? 1.0 : k / abs_x;
-}
-
-__host__ __device__ float cauchy(float k, float x) {
-  float k_sq = k * k;
-  return k_sq / (k_sq + x * x);
-}
-
 // skew symmetric matrix
 __host__ __device__ Eigen::Matrix3f skew_symmetric(const Eigen::Vector3f& x) {
   Eigen::Matrix3f skew = Eigen::Matrix3f::Zero();
@@ -35,9 +24,13 @@ struct p2d_ndt_compute_derivatives_kernel {
     const GaussianVoxelMap& target_voxelmap,
     const thrust::device_vector<Eigen::Vector3f>& source_points,
     const thrust::device_ptr<const Eigen::Isometry3f>& x_eval_ptr,
-    const thrust::device_ptr<const Eigen::Isometry3f>& x_ptr)
+    const thrust::device_ptr<const Eigen::Isometry3f>& x_ptr,
+    const thrust::device_ptr<const fast_gicp::KernelMethod> kernel_method_ptr,
+    const thrust::device_ptr<const float> kernel_width_ptr)
   : trans_eval_ptr(x_eval_ptr),
     trans_ptr(x_ptr),
+    kernel_method_ptr(kernel_method_ptr),
+    kernel_width_ptr(kernel_width_ptr),
     src_means_ptr(source_points.data()),
     voxelmap_info_ptr(target_voxelmap.voxelmap_info_ptr.data()),
     voxel_num_points_ptr(target_voxelmap.num_points.data()),
@@ -75,7 +68,10 @@ struct p2d_ndt_compute_derivatives_kernel {
 
     Eigen::Vector3f error = mean_B - transed_mean_A;
 
-    float w = cauchy(thrust::raw_pointer_cast(voxelmap_info_ptr)->voxel_resolution, error.norm());
+    float kernel_width = *thrust::raw_pointer_cast(kernel_width_ptr);
+    const fast_gicp::KernelMethod kernel = *thrust::raw_pointer_cast(kernel_method_ptr);
+
+    float w = calculate_kernel(kernel_width, error, kernel);
     float err = w * error.transpose() * RCR_inv * error;
 
     Eigen::Matrix<float, 3, 6> dtdx0;
@@ -99,6 +95,9 @@ struct p2d_ndt_compute_derivatives_kernel {
   thrust::device_ptr<const int> voxel_num_points_ptr;
   thrust::device_ptr<const Eigen::Vector3f> voxel_means_ptr;
   thrust::device_ptr<const Eigen::Matrix3f> voxel_covs_ptr;
+
+  thrust::device_ptr<const fast_gicp::KernelMethod> kernel_method_ptr;
+  thrust::device_ptr<const float> kernel_width_ptr;
 };
 
 struct d2d_ndt_compute_derivatives_kernel {
@@ -106,9 +105,13 @@ struct d2d_ndt_compute_derivatives_kernel {
     const GaussianVoxelMap& target_voxelmap,
     const GaussianVoxelMap& source_voxelmap,
     const thrust::device_ptr<const Eigen::Isometry3f>& x_eval_ptr,
-    const thrust::device_ptr<const Eigen::Isometry3f>& x_ptr)
+    const thrust::device_ptr<const Eigen::Isometry3f>& x_ptr,
+    const thrust::device_ptr<const fast_gicp::KernelMethod> kernel_method_ptr,
+    const thrust::device_ptr<const float> kernel_width_ptr)
   : trans_eval_ptr(x_eval_ptr),
     trans_ptr(x_ptr),
+    kernel_method_ptr(kernel_method_ptr),
+    kernel_width_ptr(kernel_width_ptr),
     src_means_ptr(source_voxelmap.voxel_means.data()),
     src_covs_ptr(source_voxelmap.voxel_covs.data()),
     voxelmap_info_ptr(target_voxelmap.voxelmap_info_ptr.data()),
@@ -147,7 +150,10 @@ struct d2d_ndt_compute_derivatives_kernel {
 
     Eigen::Vector3f error = mean_B - transed_mean_A;
 
-    float w = cauchy(thrust::raw_pointer_cast(voxelmap_info_ptr)->voxel_resolution, error.norm());
+    float kernel_width = *thrust::raw_pointer_cast(kernel_width_ptr);
+    const fast_gicp::KernelMethod kernel = *thrust::raw_pointer_cast(kernel_method_ptr);
+
+    float w = calculate_kernel(kernel_width, error, kernel);
     float err = w * error.transpose() * RCR_inv * error;
 
     Eigen::Matrix<float, 3, 6> dtdx0;
@@ -172,6 +178,9 @@ struct d2d_ndt_compute_derivatives_kernel {
   thrust::device_ptr<const int> voxel_num_points_ptr;
   thrust::device_ptr<const Eigen::Vector3f> voxel_means_ptr;
   thrust::device_ptr<const Eigen::Matrix3f> voxel_covs_ptr;
+
+  thrust::device_ptr<const fast_gicp::KernelMethod> kernel_method_ptr;
+  thrust::device_ptr<const float> kernel_width_ptr;
 };
 
 struct sum_errors_kernel {
@@ -190,12 +199,14 @@ double p2d_ndt_compute_derivatives(
   const thrust::device_vector<thrust::pair<int, int>>& correspondences,
   const thrust::device_ptr<const Eigen::Isometry3f>& linearized_x_ptr,
   const thrust::device_ptr<const Eigen::Isometry3f>& x_ptr,
+  const thrust::device_ptr<const fast_gicp::KernelMethod> kernel_method_ptr,
+  const thrust::device_ptr<const float> kernel_width_ptr,
   Eigen::Matrix<double, 6, 6>* H,
   Eigen::Matrix<double, 6, 1>* b) {
   auto sum_errors = thrust::transform_reduce(
     correspondences.begin(),
     correspondences.end(),
-    p2d_ndt_compute_derivatives_kernel(target_voxelmap, source_points, linearized_x_ptr, x_ptr),
+    p2d_ndt_compute_derivatives_kernel(target_voxelmap, source_points, linearized_x_ptr, x_ptr, kernel_method_ptr, kernel_width_ptr),
     thrust::make_tuple(0.0f, Eigen::Matrix<float, 6, 6>::Zero().eval(), Eigen::Matrix<float, 6, 1>::Zero().eval()),
     sum_errors_kernel());
 
@@ -213,12 +224,14 @@ double d2d_ndt_compute_derivatives(
   const thrust::device_vector<thrust::pair<int, int>>& correspondences,
   const thrust::device_ptr<const Eigen::Isometry3f>& linearized_x_ptr,
   const thrust::device_ptr<const Eigen::Isometry3f>& x_ptr,
+  const thrust::device_ptr<const fast_gicp::KernelMethod> kernel_method_ptr,
+  const thrust::device_ptr<const float> kernel_width_ptr,
   Eigen::Matrix<double, 6, 6>* H,
   Eigen::Matrix<double, 6, 1>* b) {
   auto sum_errors = thrust::transform_reduce(
     correspondences.begin(),
     correspondences.end(),
-    d2d_ndt_compute_derivatives_kernel(target_voxelmap, source_voxelmap, linearized_x_ptr, x_ptr),
+    d2d_ndt_compute_derivatives_kernel(target_voxelmap, source_voxelmap, linearized_x_ptr, x_ptr, kernel_method_ptr, kernel_width_ptr),
     thrust::make_tuple(0.0f, Eigen::Matrix<float, 6, 6>::Zero().eval(), Eigen::Matrix<float, 6, 1>::Zero().eval()),
     sum_errors_kernel());
 

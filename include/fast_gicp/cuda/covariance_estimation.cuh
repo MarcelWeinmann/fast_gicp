@@ -4,6 +4,7 @@
 #include <Eigen/Core>
 #include <thrust/device_vector.h>
 #include <fast_gicp/gicp/gicp_settings.hpp>
+#include <fast_gicp/cuda/robust_kernels.cuh>
 
 namespace fast_gicp {
 namespace cuda {

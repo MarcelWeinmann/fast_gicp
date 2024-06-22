@@ -300,6 +300,9 @@ PYBIND11_MODULE(pygicp, m) {
       , py::arg("method") = "DIRECT1", py::arg("radius") = 1.5
     )
     .def("set_resolution", &NDTCuda::setResolution)
+    .def("set_regularization_method", [](NDTCuda& ndt, const std::string& method) { ndt.setRegularizationMethod(regularization_method(method)); })
+    .def("set_kernel_widht", &NDTCuda::setKernelWidht)
+    .def("set_kernel_method", [](NDTCuda& ndt, const std::string& method) { ndt.setKernelMethod(kernel_method(method)); })
     .def("set_distance_mode", [](NDTCuda& ndt, const std::string& method) { ndt.setDistanceMode(ndt_distance_mode(method)); })
   ;
 #endif

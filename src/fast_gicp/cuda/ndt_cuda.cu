@@ -13,11 +13,14 @@ namespace cuda {
 NDTCudaCore::NDTCudaCore() {
   cudaDeviceSynchronize();
   resolution = 1.0;
+  kernel_width = 0.5;
   linearized_x.setIdentity();
 
   offsets.reset(new thrust::device_vector<Eigen::Vector3i>(1));
   (*offsets)[0] = Eigen::Vector3i::Zero().eval();
 
+  kernel_method = fast_gicp::KernelMethod::None;
+  regularization_method = fast_gicp::RegularizationMethod::MIN_EIG;
   distance_mode = fast_gicp::NDTDistanceMode::D2D;
   set_neighbor_search_method(fast_gicp::NeighborSearchMethod::DIRECT7, 0.0);
 }
@@ -30,6 +33,18 @@ void NDTCudaCore::set_distance_mode(fast_gicp::NDTDistanceMode mode) {
 
 void NDTCudaCore::set_resolution(double resolution) {
   this->resolution = resolution;
+}
+
+void NDTCudaCore::set_regularization_method(fast_gicp::RegularizationMethod method) {
+  this->regularization_method = method;
+}
+
+void NDTCudaCore::set_kernel_widht(double kernel_width) {
+  this->kernel_width = kernel_width;
+}
+
+void NDTCudaCore::set_kernel_method(fast_gicp::KernelMethod method) {
+  this->kernel_method = method;
 }
 
 void NDTCudaCore::set_neighbor_search_method(fast_gicp::NeighborSearchMethod method, double radius) {
@@ -125,7 +140,7 @@ void NDTCudaCore::create_source_voxelmap() {
 
   source_voxelmap.reset(new GaussianVoxelMap(resolution));
   source_voxelmap->create_voxelmap(*source_points);
-  covariance_regularization(source_voxelmap->voxel_means, source_voxelmap->voxel_covs, fast_gicp::RegularizationMethod::MIN_EIG);
+  covariance_regularization(source_voxelmap->voxel_means, source_voxelmap->voxel_covs, regularization_method);
 }
 
 void NDTCudaCore::create_target_voxelmap() {
@@ -136,7 +151,7 @@ void NDTCudaCore::create_target_voxelmap() {
 
   target_voxelmap.reset(new GaussianVoxelMap(resolution));
   target_voxelmap->create_voxelmap(*target_points);
-  covariance_regularization(target_voxelmap->voxel_means, target_voxelmap->voxel_covs, fast_gicp::RegularizationMethod::MIN_EIG);
+  covariance_regularization(target_voxelmap->voxel_means, target_voxelmap->voxel_covs, regularization_method);
 }
 
 void NDTCudaCore::update_correspondences(const Eigen::Isometry3d& trans) {
@@ -166,13 +181,20 @@ double NDTCudaCore::compute_error(const Eigen::Isometry3d& trans, Eigen::Matrix<
 
   thrust::device_vector<Eigen::Isometry3f> trans_ptr = trans_;
 
+  thrust::device_vector<fast_gicp::KernelMethod> kernel_method_ptr(1);
+  kernel_method_ptr[0] = kernel_method;
+  thrust::device_vector<float> kernel_width_ptr(1);
+  kernel_width_ptr[0] = kernel_width;
+
   switch (distance_mode) {
     default:
     case fast_gicp::NDTDistanceMode::P2D:
-      return p2d_ndt_compute_derivatives(*target_voxelmap, *source_points, *correspondences, trans_ptr.data(), trans_ptr.data() + 1, H, b);
+      return p2d_ndt_compute_derivatives(*target_voxelmap, *source_points, *correspondences, trans_ptr.data(),
+                                         trans_ptr.data() + 1, kernel_method_ptr.data(), kernel_width_ptr.data(), H, b);
 
     case fast_gicp::NDTDistanceMode::D2D:
-      return d2d_ndt_compute_derivatives(*target_voxelmap, *source_voxelmap, *correspondences, trans_ptr.data(), trans_ptr.data() + 1, H, b);
+      return d2d_ndt_compute_derivatives(*target_voxelmap, *source_voxelmap, *correspondences, trans_ptr.data(),
+                                         trans_ptr.data() + 1, kernel_method_ptr.data(), kernel_width_ptr.data(), H, b);
   }
 }
 

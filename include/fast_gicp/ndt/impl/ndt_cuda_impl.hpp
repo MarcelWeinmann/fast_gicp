@@ -27,6 +27,21 @@ void NDTCuda<PointSource, PointTarget>::setResolution(double resolution) {
 }
 
 template <typename PointSource, typename PointTarget>
+void NDTCuda<PointSource, PointTarget>::setRegularizationMethod(RegularizationMethod method) {
+  ndt_cuda_->set_regularization_method(method);
+}
+
+template <typename PointSource, typename PointTarget>
+void NDTCuda<PointSource, PointTarget>::setKernelWidht(double kernel_width) {
+  ndt_cuda_->set_kernel_widht(kernel_width);
+}
+
+template <typename PointSource, typename PointTarget>
+void NDTCuda<PointSource, PointTarget>::setKernelMethod(KernelMethod method) {
+  ndt_cuda_->set_kernel_method(method);
+}
+
+template <typename PointSource, typename PointTarget>
 void NDTCuda<PointSource, PointTarget>::setNeighborSearchMethod(NeighborSearchMethod method, double radius) {
   ndt_cuda_->set_neighbor_search_method(method, radius);
 }

@@ -39,6 +39,9 @@ public:
 
   void set_distance_mode(fast_gicp::NDTDistanceMode mode);
   void set_resolution(double resolution);
+  void set_regularization_method(fast_gicp::RegularizationMethod method);
+  void set_kernel_widht(double kernel_width);
+  void set_kernel_method(fast_gicp::KernelMethod method);
   void set_neighbor_search_method(fast_gicp::NeighborSearchMethod method, double radius);
 
   void swap_source_and_target();
@@ -54,7 +57,10 @@ public:
 
 public:
   fast_gicp::NDTDistanceMode distance_mode;
+  fast_gicp::KernelMethod kernel_method;
+  fast_gicp::RegularizationMethod regularization_method;
   double resolution;
+  double kernel_width;
   std::unique_ptr<VoxelCoordinates> offsets;
 
   std::unique_ptr<Points> source_points;

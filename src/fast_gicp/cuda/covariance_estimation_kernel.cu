@@ -86,35 +86,6 @@ struct covariance_estimation_kernel {
     return dist;
   }
 
-  __host__ __device__ inline float square(float x) const { return x * x; }
-
-  __host__ __device__ float calculate_kernel(float kernel_width, const Eigen::Vector3f& error, KernelMethod method) const {
-      switch(method) {
-          case KernelMethod::RBF:
-              return exp(- kernel_width * error.squaredNorm());
-              break;
-          case KernelMethod::L1:
-              return 1.0 / error.template lpNorm<1>();
-              break;
-          case KernelMethod::Geman_McClure:
-              return square(kernel_width) / square((kernel_width + error.squaredNorm()));
-              break;
-          case KernelMethod::Welsch:
-              return exp(- (error / kernel_width).squaredNorm());
-              break;
-          case KernelMethod::Switchable_Constraint: {
-              float squared_error = error.squaredNorm();
-              if (squared_error <= kernel_width) {
-                  return 1.0;
-              } else {
-                  return 4 * square(kernel_width) / square(kernel_width + squared_error);
-              }}
-              break;
-          default:
-              return 1.0;
-      }
-  }
-
   thrust::device_ptr<const float> kernel_width_ptr;
   thrust::device_ptr<const float> max_dist_ptr;
   thrust::device_ptr<const KernelMethod> kernel_ptr;
