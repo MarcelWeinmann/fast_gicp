@@ -13,9 +13,6 @@
 #include <fast_gicp/gicp/fast_vgicp_cuda.hpp>
 #include <fast_gicp/cuda/fast_vgicp_cuda.cuh>
 
-#include <thrust/host_vector.h>
-#include <thrust/device_vector.h>
-
 namespace fast_gicp {
 
 template<typename PointSource, typename PointTarget>

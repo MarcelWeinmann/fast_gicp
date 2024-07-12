@@ -9,17 +9,6 @@
 #include <fast_gicp/ndt/ndt_settings.hpp>
 #include <fast_gicp/gicp/gicp_settings.hpp>
 
-namespace thrust {
-template <typename T1, typename T2>
-class pair;
-
-template <typename T>
-class device_allocator;
-
-template <typename T, typename Alloc>
-class device_vector;
-}  // namespace thrust
-
 namespace fast_gicp {
 namespace cuda {
 
@@ -27,12 +16,6 @@ class GaussianVoxelMap;
 
 class NDTCudaCore {
 public:
-  using Points = thrust::device_vector<Eigen::Vector3f, thrust::device_allocator<Eigen::Vector3f>>;
-  using Indices = thrust::device_vector<int, thrust::device_allocator<int>>;
-  using Matrices = thrust::device_vector<Eigen::Matrix3f, thrust::device_allocator<Eigen::Matrix3f>>;
-  using Correspondences = thrust::device_vector<thrust::pair<int, int>, thrust::device_allocator<thrust::pair<int, int>>>;
-  using VoxelCoordinates = thrust::device_vector<Eigen::Vector3i, thrust::device_allocator<Eigen::Vector3i>>;
-
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   NDTCudaCore();
   ~NDTCudaCore();
@@ -55,22 +38,9 @@ public:
   void update_correspondences(const Eigen::Isometry3d& trans);
   double compute_error(const Eigen::Isometry3d& trans, Eigen::Matrix<double, 6, 6>* H, Eigen::Matrix<double, 6, 1>* b) const;
 
-public:
-  fast_gicp::NDTDistanceMode distance_mode;
-  fast_gicp::KernelMethod kernel_method;
-  fast_gicp::RegularizationMethod regularization_method;
-  double resolution;
-  double kernel_width;
-  std::unique_ptr<VoxelCoordinates> offsets;
-
-  std::unique_ptr<Points> source_points;
-  std::unique_ptr<Points> target_points;
-
-  std::unique_ptr<GaussianVoxelMap> source_voxelmap;
-  std::unique_ptr<GaussianVoxelMap> target_voxelmap;
-
-  Eigen::Isometry3f linearized_x;
-  std::unique_ptr<Correspondences> correspondences;
+private:
+  struct Impl;
+  std::unique_ptr<Impl> pimpl;
 };
 
 }  // namespace cuda

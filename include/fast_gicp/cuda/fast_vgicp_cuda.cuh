@@ -8,18 +8,6 @@
 
 #include <fast_gicp/gicp/gicp_settings.hpp>
 
-namespace thrust {
-
-template <typename T1, typename T2>
-class pair;
-
-template <typename T>
-class device_allocator;
-
-template <typename T, typename Alloc>
-class device_vector;
-}  // namespace thrust
-
 namespace fast_gicp {
 namespace cuda {
 
@@ -27,12 +15,6 @@ class GaussianVoxelMap;
 
 class FastVGICPCudaCore {
 public:
-  using Points = thrust::device_vector<Eigen::Vector3f, thrust::device_allocator<Eigen::Vector3f>>;
-  using Indices = thrust::device_vector<int, thrust::device_allocator<int>>;
-  using Matrices = thrust::device_vector<Eigen::Matrix3f, thrust::device_allocator<Eigen::Matrix3f>>;
-  using Correspondences = thrust::device_vector<thrust::pair<int, int>, thrust::device_allocator<thrust::pair<int, int>>>;
-  using VoxelCoordinates = thrust::device_vector<Eigen::Vector3i, thrust::device_allocator<Eigen::Vector3i>>;
-
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   FastVGICPCudaCore();
   ~FastVGICPCudaCore();
@@ -70,25 +52,9 @@ public:
 
   double compute_error(const Eigen::Isometry3d& trans, Eigen::Matrix<double, 6, 6>* H, Eigen::Matrix<double, 6, 1>* b) const;
 
-public:
-  double resolution;
-  double kernel_width;
-  double kernel_max_dist;
-  std::unique_ptr<VoxelCoordinates> offsets;
-
-  std::unique_ptr<Points> source_points;
-  std::unique_ptr<Points> target_points;
-
-  std::unique_ptr<Indices> source_neighbors;
-  std::unique_ptr<Indices> target_neighbors;
-
-  std::unique_ptr<Matrices> source_covariances;
-  std::unique_ptr<Matrices> target_covariances;
-
-  std::unique_ptr<GaussianVoxelMap> voxelmap;
-
-  Eigen::Isometry3f linearized_x;
-  std::unique_ptr<Correspondences> voxel_correspondences;
+private:
+  struct Impl;
+  std::unique_ptr<Impl> pimpl;
 };
 
 }  // namespace cuda
