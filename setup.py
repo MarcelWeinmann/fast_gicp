@@ -43,14 +43,26 @@ class CMakeBuild(build_ext):
         # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON
         # EXAMPLE_VERSION_INFO shows you how to pass a value into the C++ code
         # from Python.
-        cmake_args = [
-            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(extdir),
-            "-DPYTHON_EXECUTABLE={}".format(sys.executable),
-            "-DEXAMPLE_VERSION_INFO={}".format(self.distribution.get_version()),
-            "-DCMAKE_BUILD_TYPE={}".format(cfg),  # not used on MSVC, but no harm,
-            "-DBUILD_VGICP_CUDA=ON",
-            "-DBUILD_PYTHON_BINDINGS=ON",
-        ]
+        # always try to build the lib with CUDA if a GPU is available
+        try:
+            result = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if result.returncode == 0:
+                cmake_args = [
+                    "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(extdir),
+                    "-DPYTHON_EXECUTABLE={}".format(sys.executable),
+                    "-DEXAMPLE_VERSION_INFO={}".format(self.distribution.get_version()),
+                    "-DCMAKE_BUILD_TYPE={}".format(cfg),  # not used on MSVC, but no harm,
+                    "-DBUILD_VGICP_CUDA=ON",
+                    "-DBUILD_PYTHON_BINDINGS=ON",
+                ]
+        except FileNotFoundError:
+            cmake_args = [
+                "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(extdir),
+                "-DPYTHON_EXECUTABLE={}".format(sys.executable),
+                "-DEXAMPLE_VERSION_INFO={}".format(self.distribution.get_version()),
+                "-DCMAKE_BUILD_TYPE={}".format(cfg),  # not used on MSVC, but no harm,
+            ]
+
         build_args = []
 
         if self.compiler.compiler_type != "msvc":
