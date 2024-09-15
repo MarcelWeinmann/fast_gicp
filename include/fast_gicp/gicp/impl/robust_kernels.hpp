@@ -24,6 +24,9 @@ R calculate_kernel(R kernel_width, T error, KernelMethod method) {
         case KernelMethod::Welsch:
             return exp(- (error / kernel_width).squaredNorm());
             break;
+        case KernelMethod::Cauchy:
+            return 1 / ( 1 + (error / kernel_width).squaredNorm());
+            break;
         case KernelMethod::Switchable_Constraint: {
             R squared_error = error.squaredNorm();
             if (squared_error <= kernel_width) {
